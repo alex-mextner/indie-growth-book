@@ -33,6 +33,7 @@ Requires `pandoc` ≥ 3.1 and, for PDF, LibreOffice (DOCX → PDF). Litres accep
 - **Copyright.** Paraphrase ideas from other books in your own words with a source note. Quotes ≤ 2 sentences, in quotation marks, attributed. Never reproduce passages, tables or figures from copyrighted books.
 - **No invented facts.** No fabricated case studies presented as real, no invented statistics. Hypotheticals are marked as such; unsourced numbers are marked "rule of thumb: check it against your own data" / «ориентир, проверяйте на своих данных».
 - **Platform facts carry a date and a source** (Threads, Telegram, ad exchanges, Litres) — they change.
+- **Authors' products stay unnamed.** The authors' own products may serve as examples ("our calendar bot" / «наш календарный бот»), but the book never names them, links them or reads as an ad for them. Real facts about them only as the authors confirmed them; anything else is a marked hypothetical.
 - **Privacy.** The authors and people around them appear only with facts they approved for publication. No private messages, no personal stories from social media, no health, politics, finances of real people. When in doubt, generalize ("a friend who runs meetups").
 - Callouts use fenced divs: `::: note`, `::: tip`, `::: warning`, `::: case`, `::: step`, `::: skip`.
 - Chapter ids: `{#ch-2-1}`; cross-refs `[chapter 2.1](#ch-2-1)`.

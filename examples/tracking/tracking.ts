@@ -7,8 +7,8 @@ export const SOURCE_RE = /^src_[A-Za-z0-9_-]{1,60}$/;
 // Ссылки на объекты продукта: ev_<токен объекта>[_<код пригласившего>]
 export const SHARE_RE = /^(?:ev|inv)_([A-Za-z0-9]{8,24})(?:_([A-Za-z0-9]{6,12}))?$/;
 // Ссылки, выданные до разметки: поправьте префиксы под свой бот.
-// HyperCalendarBot исторически использовал s_ (событие) и i_ (приглашение).
-export const LEGACY_SHARE_RE = /^(?:ev|inv|s|i)_[A-Za-z0-9-]{1,60}$/;
+// Добавьте сюда префиксы, которые ваш бот выдавал раньше.
+export const LEGACY_SHARE_RE = /^(?:ev|inv)_[A-Za-z0-9-]{1,60}$/;
 
 export type Parsed = { source: string; objectToken?: string; inviteCode?: string };
 

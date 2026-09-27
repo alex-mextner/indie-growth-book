@@ -67,7 +67,7 @@ The practical conclusion: the bot should help people get their first reminder wi
 Retention has a similar trap. Most of a calendar's value is passive: a person receives reminders and writes nothing for weeks. So retention here is two lines, active and passive. Why one isn't enough and how to count both is the subject of [chapter 2.3](#ch-2-3).
 
 ::: case
-Our first activation definition for the calendar bot was "created an event." You can test it with one query: of those who "created an event," how many had at least one reminder fire in their first week? If the first event is set for next week or later, then by reminder time the bot is an unfamiliar chat at the bottom of the list. So we moved activation to the delivered reminder.
+If activation is already defined as "created an event," test that definition with one query: of those who "created an event," how many had at least one reminder fire in their first week? If a noticeable share had none, activation sits too early: by reminder time, the bot is already an unfamiliar chat at the bottom of the list.
 :::
 
 ::: case

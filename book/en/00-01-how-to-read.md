@@ -18,7 +18,7 @@ Every chapter has the same four-part skeleton.
 
 **The gist.** One or two pages on what people who have done this many times already know. It links to the books and articles behind it, so you can read the primary sources in full. If the topic is familiar, you'll recognize it in the first paragraph and move on.
 
-**The bridge.** The core of the chapter. How the idea plays out for a small product: two people, about $100, Telegram (a messaging app with its own bot and payments platform), a Russian-speaking audience, and a bill for every AI request. This is where the calculations, database queries, tables and real numbers live.
+**The bridge.** The core of the chapter. How the idea plays out for a small product: two people, about $100, Telegram (a messaging app with its own bot and payments platform), a Russian-speaking audience, and a bill for every AI request. This is where the calculations, database queries and tables live, with numbers that are either sourced or marked as illustrations.
 
 **Your step.** One thing to do tonight, with a clear "done when" test. A step never asks you to buy a subscription or learn a new tool. If you take no steps at all, the book stays an interesting read and nothing more.
 
@@ -28,18 +28,16 @@ Some chapters open with a "Know this? Skip ahead" box. It means the first pages 
 
 ## The running example
 
-Theory without an example doesn't stick. So one product runs through the whole book: HyperCalendarBot, a calendar bot for Telegram whose code you can read on GitHub[^src-hcb]. You talk to it like a person: "gym Thursday at seven, remind me an hour before." It creates the event, syncs it with Google Calendar, can call you by voice, and keeps a shared calendar for a family or a group of friends.
+Theory without an example doesn't stick. So one product runs through the whole book: our calendar bot for Telegram. We don't name it. This book isn't an ad, and the bot is simply a convenient example. You talk to it like a person: "gym Thursday at seven, remind me an hour before." It creates the event and reminds you about it. It also syncs with Google Calendar and keeps shared plans for a family or a group of friends.
 
 We'll call products like this **conversational products**: you don't click through pages, you chat. They have their own rules for funnels, retention and onboarding, and the book gives them special attention.
 
-The bot makes a good teaching example for three reasons. Every user costs money: each request to the AI model is billed, so a free user is an expense. It has built-in virality: an event invitation brings a new person in by itself.
-
-And it has two possible business models: a subscription for individuals, and payment from organizers with many participants. Almost any indie product resembles it in at least one of these ways.
+The bot makes a good teaching example for three reasons. Every user costs money: each request to the AI model is billed, so a free user is an expense. It has built-in virality: an event invitation brings a new person in by itself. It also has two possible business models: a subscription for individuals, and payment from organizers with many participants. Almost any indie product resembles it in at least one of these ways.
 
 The second running example is an expense-tracking bot. It's simpler, with a different benefit and a different usage rhythm. Where a chapter's method doesn't obviously carry over to it, a separate box shows how. You'll also meet a community of electric-car owners and a writer's social media account: examples of growth through usefulness and through content.
 
 ::: note
-The code in this book is TypeScript and SQLite (the `bun:sqlite` driver), same as the bot itself. Full versions with tests live in the `examples` folder of the book's repository.
+The code in this book is TypeScript and SQLite (the `bun:sqlite` driver), just like the bot itself. Full versions with tests live in the `examples` folder of the book's repository.
 
 If you use Postgres, store dates as `timestamptz` and swap: `INSERT OR IGNORE` → `INSERT … ON CONFLICT DO NOTHING`, `datetime('now', '-7 days')` → `now() - interval '7 days'`, `SUM(condition)` → `COUNT(*) FILTER (WHERE condition)`, `strftime` → `date_trunc`. If your bot runs on Python and aiogram, use a single `CommandStart()` handler: the link parameter arrives in `command.args`, and for a bare `/start` it's `None`.
 :::
@@ -66,6 +64,5 @@ List the products you've built or are building, up to three; one is enough. Next
 **Done when** the list is on your desk. You'll need it in [chapter 2.3](#ch-2-3), where we learn to get this number automatically. You'll use it again in [chapter 6.5](#ch-6-5) to pick which product deserves a month of work.
 :::
 
-**Recap.** You'll meet the gist → bridge → step → recap structure in every chapter. The running example, the calendar bot, takes center stage in [chapter 2.1](#ch-2-1). There we open its code for the first time and see what it didn't know about its users.
+**Recap.** You'll meet the gist → bridge → step → recap structure in every chapter. The running example, our calendar bot, takes center stage in [chapter 2.1](#ch-2-1). There we open its code for the first time and see what it didn't know about its users.
 
-[^src-hcb]: github.com/alex-mextner/HyperCalendarBot (accessed September 27, 2026). Code fragments in the book are simplified for readability.

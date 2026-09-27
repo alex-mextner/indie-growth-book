@@ -23,6 +23,8 @@
 
 ## Авторы / Authors
 
+**Elena Babich** — автор текстов с аудиторией в соцсетях.
+
 **Alex Mextner** — продуктовый дизайнер и фронтенд-разработчик, CTO [HyperIDE](https://hyperide.ai), автор книги [VS Code Extension API — The Complete Developer Guide](https://github.com/alex-mextner/code-ext-book). Telegram: [@mxtnr](https://t.me/mxtnr).
 
 ## Лицензия / License

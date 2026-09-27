@@ -130,7 +130,7 @@ The database writes the timestamp itself with `datetime('now')`. That way all da
 If your bot already has users, move them into the table with the source `legacy` before launch. Otherwise every existing user who taps `/start` gets recorded as new. The migration query, which handles different date formats, is in `examples/tracking/queries.sql`.
 
 ::: case
-In the calendar bot, the `/start` handler understood only event links and invitations and silently dropped any other parameter. The bot ran for six months, and we didn't know the most important thing: where people came from. The fix took one evening.
+In our calendar bot, the `/start` handler understood only event links and invitations and silently dropped any other parameter. Real people were already using the bot, and we didn't know the most important thing: where they came from. The fix took one evening.
 :::
 
 ### Record it: the "how did you hear about us?" question

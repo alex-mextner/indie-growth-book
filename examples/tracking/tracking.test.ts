@@ -16,8 +16,7 @@ test("sourceOf: метки, ссылки на объекты, мусор", () =>
   expect(t.sourceOf("ev_Ab12Cd34Ef").source).toBe("src_share"); // старая ссылка без кода
   expect(t.sourceOf("ev_Ab12Cd34Ef").inviteCode).toBeUndefined();
   expect(t.sourceOf("ev_123").source).toBe("src_share");        // старый порядковый номер
-  expect(t.sourceOf("s_ab12cd").source).toBe("src_share");       // старый формат HyperCalendarBot
-  expect(t.sourceOf("i_3f2a9c1e-5b7d-4e8a").source).toBe("src_share");
+  expect(t.sourceOf("inv_3f2a9c1e-5b7d-4e8a").source).toBe("src_share"); // старый формат с дефисами
   expect(t.sourceOf("hello world").source).toBe("none");
   expect(t.sourceOf(undefined).source).toBe("none");
 });
