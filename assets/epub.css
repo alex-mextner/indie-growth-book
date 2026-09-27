@@ -1,0 +1,9 @@
+body { font-family: serif; line-height: 1.5; }
+h1 { page-break-before: always; margin-top: 2em; }
+code, pre { font-family: monospace; font-size: 0.9em; }
+pre { background: #f4f4f4; padding: 0.6em; white-space: pre-wrap; }
+table { border-collapse: collapse; margin: 1em 0; font-size: 0.9em; }
+th, td { border: 1px solid #bbb; padding: 0.3em 0.5em; vertical-align: top; }
+.callout { border-left: 4px solid #888; padding: 0.3em 0.9em; margin: 1.2em 0; background: #f7f7f7; }
+.note { border-color: #3b6ea8; } .tip { border-color: #2e8b57; } .warning { border-color: #c77700; }
+.case { border-color: #7a4fa0; } .step { border-color: #111; background: #eef6ee; } .skip { border-color: #999; font-size: 0.95em; }
