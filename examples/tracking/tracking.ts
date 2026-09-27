@@ -1,4 +1,4 @@
-// Код к главам 2.1 и 2.2 книги «Из продукта в бизнес».
+// Код к главам 2.1–2.3 книги «Из продукта в бизнес».
 // Bun + bun:sqlite. Для better-sqlite3 замените db.run(sql, [..]) на db.prepare(sql).run(..).
 import type { Database } from "bun:sqlite";
 import { randomBytes } from "node:crypto";
@@ -87,6 +87,56 @@ export function recordBotStatus(db: Database, userId: number, status: "kicked" |
   if (status === "kicked") markStep(db, userId, "bot_blocked"); // первая блокировка — для воронки
 }
 
+/**
+ * Глава 2.3: человек сам что-то сделал в личном чате с ботом.
+ * Вызывайте на сообщения и нажатия кнопок в чате типа "private"; служебные обновления и группы — не сюда.
+ */
+export function markActive(db: Database, userId: number) {
+  db.run("INSERT OR IGNORE INTO user_activity (telegram_id, day) VALUES (?, date('now'))", [userId]);
+}
+
+/**
+ * Глава 2.3: напоминание (или сводка) ушло без ошибки. Вызывайте после успешного sendMessage,
+ * передав message_id из ответа Telegram: по нему кнопка «знак жизни» найдёт свою запись.
+ * Для своего напоминания (kind = "reminder", ownEvent = true) заодно отмечает шаг воронки
+ * first_reminder_delivered (глава 2.2) — отдельный вызов markStep для этого шага уберите.
+ * Напоминание о чужом общем событии активацией получателя не считается: ownEvent = false.
+ */
+export function recordReminderDelivery(
+  db: Database, userId: number, messageId: number | null, kind = "reminder", ownEvent = true,
+) {
+  db.run(
+    "INSERT INTO reminder_deliveries (telegram_id, kind, message_id, delivered_on) VALUES (?, ?, ?, date('now'))",
+    [userId, kind, messageId],
+  );
+  if (kind === "reminder" && ownEvent) markStep(db, userId, "first_reminder_delivered");
+}
+
+/** Ошибка отправки 403: блокировка — только «bot was blocked by the user». Остальное (не нажимал /start, удалён) — не блокировка. */
+export function isBlockedError(description: string | undefined): boolean {
+  return !!description && description.includes("bot was blocked by the user");
+}
+
+/** Глава 2.3: настоящий ввод человека. Служебные сообщения (оплата, вход в чат и т. п.) — не использование. */
+export function isHumanInput(update: { message?: any; callback_query?: { data?: string } }): boolean {
+  const m = update.message;
+  if (m) return !!(m.text || m.voice || m.photo || m.video_note || m.video || m.document || m.location || m.contact);
+  return !!update.callback_query && update.callback_query.data !== "alive";
+}
+
+/**
+ * Глава 2.3: нажата кнопка «знак жизни» под напоминанием. Возвращает true при первом нажатии.
+ * Активностью НЕ считается: бот сам просит нажать, и рост нажатий изобразил бы рост продукта.
+ */
+export function ackReminder(db: Database, userId: number, messageId: number): boolean {
+  const res = db.run(
+    `UPDATE reminder_deliveries SET acked_on = date('now')
+     WHERE telegram_id = ? AND message_id = ? AND acked_on IS NULL`,
+    [userId, messageId],
+  );
+  return res.changes === 1;
+}
+
 /** Удаление по запросу пользователя: все маркетинговые таблицы разом. */
 export function deleteUserTracking(db: Database, userId: number) {
   db.transaction(() => {
@@ -95,5 +145,7 @@ export function deleteUserTracking(db: Database, userId: number) {
     db.run("DELETE FROM invite_codes WHERE telegram_id = ?", [userId]);
     db.run("DELETE FROM funnel_events WHERE telegram_id = ?", [userId]);
     db.run("DELETE FROM bot_status WHERE telegram_id = ?", [userId]);
+    db.run("DELETE FROM user_activity WHERE telegram_id = ?", [userId]);
+    db.run("DELETE FROM reminder_deliveries WHERE telegram_id = ?", [userId]);
   })();
 }
