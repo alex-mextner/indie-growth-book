@@ -1,0 +1,22 @@
+name: build
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pandoc and LibreOffice
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pandoc libreoffice-writer fonts-dejavu
+      - name: Build
+        run: bash scripts/build.sh
+      - name: Stats
+        run: bash scripts/stats.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: book
+          path: dist/
