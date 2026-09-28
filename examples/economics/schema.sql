@@ -67,6 +67,17 @@ CREATE TABLE IF NOT EXISTS payments (
   provider     TEXT    NOT NULL,           -- 'stars' | название эквайринга
   charge_id    TEXT    NOT NULL UNIQUE,    -- telegram_payment_charge_id или id провайдера: нужен для возврата
   net_usd      REAL    NOT NULL,           -- что дойдёт до вас после комиссии, в $ по курсу на дату платежа
-  refunded_at  TEXT                        -- NULL, если возврата не было
+  refunded_at  TEXT,                       -- NULL, если возврата не было
+  expires_at   TEXT                        -- глава 5.5: до какого момента оплачена подписка; NULL — не подписка
 );
 CREATE INDEX IF NOT EXISTS payments_user_at ON payments (telegram_id, paid_at);
+
+-- 5.5. Каждый показ кнопки подписки и нажатие на неё — с ценой (для теста цены по неделям).
+-- На старой базе из главы 2.4 вызовите initPaymentsSchema из economics.ts: он добавит expires_at и эту таблицу.
+CREATE TABLE IF NOT EXISTS paywall_views (
+  telegram_id INTEGER NOT NULL,
+  at          TEXT    NOT NULL,
+  stars       INTEGER NOT NULL,
+  action      TEXT    NOT NULL  -- 'seen' | 'clicked'
+);
+CREATE INDEX IF NOT EXISTS paywall_views_at ON paywall_views (at);

@@ -243,3 +243,138 @@ export function simpleLtv(monthlyContribution: number, payerMonthlyChurn: number
 export function paybackMonths(cacPerPayer: number, monthlyContribution: number): number {
   return monthlyContribution > 0 ? cacPerPayer / monthlyContribution : Infinity;
 }
+
+// ---------- Глава 5.5: платежи звёздами ----------
+
+/**
+ * Сколько долларов Telegram засчитывает разработчику за одну звезду при выводе через Fragment
+ * (условия для разработчиков, п. 6.2.4; проверено 28.09.2026). Курс может меняться — передавайте свой.
+ */
+export const STAR_USD = 0.013;
+
+/**
+ * Миграция для главы 5.5 на базе из главы 2.4: столбец payments.expires_at и таблица показов кнопки подписки.
+ * Безопасно вызывать при каждом старте.
+ */
+export function initPaymentsSchema(db: Database) {
+  const cols = (db.query("PRAGMA table_info(payments)").all() as { name: string }[]).map((c) => c.name);
+  if (!cols.includes("expires_at")) db.run("ALTER TABLE payments ADD COLUMN expires_at TEXT");
+  db.exec(`CREATE TABLE IF NOT EXISTS paywall_views (
+    telegram_id INTEGER NOT NULL,
+    at          TEXT    NOT NULL,
+    stars       INTEGER NOT NULL,
+    action      TEXT    NOT NULL  -- 'seen' | 'clicked'
+  );
+  CREATE INDEX IF NOT EXISTS paywall_views_at ON paywall_views (at);`);
+}
+
+/** Записать каждый показ кнопки подписки или нажатие на неё — с ценой. В отличие от markStep, не один раз на человека. */
+export function recordPaywallView(db: Database, userId: number, stars: number, action: "seen" | "clicked") {
+  db.run(`INSERT INTO paywall_views (telegram_id, at, stars, action) VALUES (?, datetime('now'), ?, ?)`, [
+    userId,
+    stars,
+    action,
+  ]);
+}
+
+/** Поля SuccessfulPayment из Bot API, нужные для учёта. Объект из grammY подходит как есть. */
+export type StarPayment = {
+  currency: string;
+  total_amount: number; // для XTR — число звёзд
+  invoice_payload: string;
+  telegram_payment_charge_id: string;
+  is_recurring?: true;
+  subscription_expiration_date?: number; // Unix time
+};
+
+/**
+ * Записать платёж звёздами из successful_payment. Повторная доставка того же обновления ничего не меняет:
+ * charge_id уникален. Подписка — если payload начинается с "sub" или платёж — продление (is_recurring).
+ * expires_at — из subscription_expiration_date, а если его нет — через 30 дней от платежа.
+ * net_usd = звёзды × usdPerStar × (1 − extraFeeShare); extraFeeShare — 0,15 при темах в личных чатах, иначе 0.
+ * Комиссию партнёрской программы Telegram здесь не видно: сверяйте с getStarTransactions.
+ * Возвращает true, если строка новая. Нужен initPaymentsSchema.
+ */
+export function recordStarPayment(
+  db: Database,
+  userId: number,
+  p: StarPayment,
+  opts: { usdPerStar?: number; extraFeeShare?: number } = {},
+): boolean {
+  if (p.currency !== "XTR") throw new Error(`recordStarPayment: ожидалась валюта XTR, пришла ${p.currency}`);
+  const isSub = Boolean(p.is_recurring) || p.invoice_payload.startsWith("sub");
+  const net = p.total_amount * (opts.usdPerStar ?? STAR_USD) * (1 - (opts.extraFeeShare ?? 0));
+  const r = db.run(
+    `INSERT OR IGNORE INTO payments
+       (telegram_id, kind, paid_at, amount, currency, provider, charge_id, net_usd, expires_at)
+     VALUES (?, ?, datetime('now'), ?, 'XTR', 'stars', ?, ?,
+       CASE WHEN ? IS NOT NULL THEN datetime(?, 'unixepoch')
+            WHEN ? THEN datetime('now', '+30 days') END)`,
+    [
+      userId,
+      isSub ? "subscription" : "one_off",
+      p.total_amount,
+      p.telegram_payment_charge_id,
+      net,
+      p.subscription_expiration_date ?? null,
+      p.subscription_expiration_date ?? null,
+      isSub ? 1 : 0,
+    ],
+  );
+  return r.changes > 0;
+}
+
+/** Отметить возврат по charge_id (после refundStarPayment или сообщения refunded_payment). true — если отметили сейчас. */
+export function markRefunded(db: Database, chargeId: string): boolean {
+  const r = db.run(
+    `UPDATE payments SET refunded_at = datetime('now') WHERE charge_id = ? AND refunded_at IS NULL`,
+    [chargeId],
+  );
+  return r.changes > 0;
+}
+
+/**
+ * До какого момента (UTC, 'YYYY-MM-DD HH:MM:SS') оплачена подписка; null — если не оплачена.
+ * Возвращённые платежи не считаются. Для старых строк без expires_at — 30 дней от платежа.
+ * graceHours — запас после окончания: продление может прийти с задержкой.
+ */
+export function subscriptionUntil(db: Database, userId: number, graceHours = 24): string | null {
+  const r = db
+    .query(
+      `SELECT MAX(COALESCE(expires_at, datetime(paid_at, '+30 days'))) AS until FROM payments
+       WHERE telegram_id = ? AND kind = 'subscription' AND refunded_at IS NULL`,
+    )
+    .get(userId) as { until: string | null };
+  if (!r.until) return null;
+  const alive = db.query(`SELECT ? > datetime('now', ?) AS ok`).get(r.until, `-${graceHours} hours`) as { ok: number };
+  return alive.ok ? r.until : null;
+}
+
+/** Есть ли у человека оплаченный период подписки (с запасом graceHours). Отмена продления доступ не обрывает. */
+export function hasActiveSubscription(db: Database, userId: number, graceHours = 24): boolean {
+  return subscriptionUntil(db, userId, graceHours) !== null;
+}
+
+/**
+ * Решение для pre_checkout_query: валюта, цена из списка всех когда-либо выданных, метка, нет ли уже подписки.
+ * Отказ из-за подписки — только если она оплачена больше чем на сутки вперёд: вдруг продление тоже
+ * проходит через pre_checkout (документация этого не говорит), тогда его нельзя отклонять.
+ */
+export function checkCheckout(
+  db: Database,
+  userId: number,
+  q: { currency: string; total_amount: number; invoice_payload: string },
+  prices: ReadonlySet<number>,
+): { ok: true } | { ok: false; error: string } {
+  if (q.currency !== "XTR" || !prices.has(q.total_amount) || q.invoice_payload !== `sub_${q.total_amount}`) {
+    return { ok: false, error: "Счёт устарел — нажмите кнопку подписки ещё раз." };
+  }
+  const r = db
+    .query(
+      `SELECT MAX(COALESCE(expires_at, datetime(paid_at, '+30 days'))) > datetime('now', '+1 day') AS busy
+       FROM payments WHERE telegram_id = ? AND kind = 'subscription' AND refunded_at IS NULL`,
+    )
+    .get(userId) as { busy: number | null };
+  if (r.busy) return { ok: false, error: "Подписка уже активна — второй раз платить не нужно." };
+  return { ok: true };
+}

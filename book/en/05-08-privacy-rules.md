@@ -82,6 +82,7 @@ Our calendar bot creates events, issues invitation links and sends texts to a mo
 | `experiment_assignments` | experiments (chapter 2.5) | 12 months without activity |
 | `ai_usage`, `payments` | costs, refunds, taxes (chapter 2.4) | on deletion, id → 0 |
 | group: `chat_id`, who added the bot | group accounting (chapter 5.2) | while the bot is in the group |
+| `clicks`: device class, same-day hash | clicks on paid placements (chapter 5.3) | hash until the end of the day; row as long as funnel steps |
 
 An event is as sensitive as a text: "Doctor's appointment on Thursday" says more than a name. We don't write texts to logs. Frameworks often log whole updates, so check your log level.
 :::

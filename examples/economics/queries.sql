@@ -238,3 +238,37 @@ SELECT cohort, n,
        MAX(CASE WHEN k = 4 THEN ROUND(contribution_cum / n, 2) END) AS m4,
        MAX(CASE WHEN k = 5 THEN ROUND(contribution_cum / n, 2) END) AS m5
 FROM cells GROUP BY cohort ORDER BY cohort;
+
+-- name: paywall_funnel_by_week
+-- Глава 5.5: настоящая дверь вместо фальшивой (глава 2.5), по неделям (с понедельника, UTC) и ценам.
+-- Показы и нажатия — из paywall_views (recordPaywallView), оплата — подписка по той же цене не позже 7 дней
+-- после первого показа на этой неделе, без возврата. Свои аккаунты исключены. Считаются люди, а не показы.
+WITH me(telegram_id) AS (VALUES (111111111), (222222222)),
+v AS (
+  SELECT telegram_id, stars, action, at,
+         date(at, '-' || ((CAST(strftime('%w', at) AS INTEGER) + 6) % 7) || ' days') AS week
+  FROM paywall_views WHERE telegram_id NOT IN (SELECT telegram_id FROM me)
+),
+seen AS (
+  SELECT week, stars, telegram_id, MIN(at) AS first_at FROM v WHERE action = 'seen'
+  GROUP BY week, stars, telegram_id
+)
+SELECT s.week, s.stars,
+       COUNT(*) AS seen,
+       SUM(EXISTS (SELECT 1 FROM v WHERE v.week = s.week AND v.stars = s.stars
+                   AND v.telegram_id = s.telegram_id AND v.action = 'clicked')) AS clicked,
+       SUM(EXISTS (SELECT 1 FROM payments p
+                   WHERE p.telegram_id = s.telegram_id AND p.kind = 'subscription' AND p.amount = s.stars
+                     AND p.refunded_at IS NULL AND p.paid_at >= s.first_at
+                     AND p.paid_at <= datetime(s.first_at, '+7 days'))) AS paid
+FROM seen s
+GROUP BY s.week, s.stars
+ORDER BY s.week, s.stars;
+
+-- name: refund_share_30d
+-- Глава 5.5: доля возвращённых платежей звёздами за 30 дней — предохранитель. В главе 2.4 заложено 2 % (иллюстрация).
+SELECT COUNT(*) AS payments,
+       SUM(refunded_at IS NOT NULL) AS refunded,
+       ROUND(100.0 * SUM(refunded_at IS NOT NULL) / NULLIF(COUNT(*), 0), 1) AS refund_pct
+FROM payments
+WHERE provider = 'stars' AND paid_at >= datetime('now', '-30 days');

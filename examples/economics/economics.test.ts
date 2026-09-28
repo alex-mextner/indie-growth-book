@@ -335,3 +335,121 @@ test("удаление по запросу: журнал и платежи пс�
   expect((db.query("SELECT COUNT(*) n FROM payments WHERE telegram_id = 7").get() as any).n).toBe(0);
   expect((db.query("SELECT ROUND(SUM(cost_usd), 2) s FROM ai_usage").get() as any).s).toBeCloseTo(0.03, 2);
 });
+
+// ---------- Глава 5.5 ----------
+
+const sub = (charge: string, stars = 250, extra: Partial<e.StarPayment> = {}): e.StarPayment => ({
+  currency: "XTR",
+  total_amount: stars,
+  invoice_payload: `sub_${stars}`,
+  telegram_payment_charge_id: charge,
+  ...extra,
+});
+const unix = (sqlOffset: string) =>
+  (db.query(`SELECT CAST(strftime('%s', 'now', ?) AS INTEGER) AS s`).get(sqlOffset) as { s: number }).s;
+
+test("initPaymentsSchema: старая таблица payments из главы 2.4 получает expires_at, повторный вызов безопасен", () => {
+  const old = new Database(":memory:");
+  old.exec(`CREATE TABLE payments (telegram_id INTEGER NOT NULL, kind TEXT NOT NULL DEFAULT 'subscription',
+    paid_at TEXT NOT NULL, amount REAL NOT NULL, currency TEXT NOT NULL, provider TEXT NOT NULL,
+    charge_id TEXT NOT NULL UNIQUE, net_usd REAL NOT NULL, refunded_at TEXT)`);
+  old.run(`INSERT INTO payments VALUES (1, 'subscription', datetime('now', '-3 days'), 250, 'XTR', 'stars', 'old1', 3.25, NULL)`);
+  e.initPaymentsSchema(old);
+  e.initPaymentsSchema(old);
+  const cols = (old.query("PRAGMA table_info(payments)").all() as { name: string }[]).map((c) => c.name);
+  expect(cols).toContain("expires_at");
+  expect(e.hasActiveSubscription(old, 1)).toBe(true); // старая строка без expires_at: 30 дней от платежа
+  expect(e.recordStarPayment(old, 2, { ...sub("n1"), subscription_expiration_date: unix("+30 days") })).toBe(true);
+  e.recordPaywallView(old, 2, 250, "seen");
+  expect((old.query("SELECT COUNT(*) n FROM paywall_views").get() as any).n).toBe(1);
+  e.initPaymentsSchema(db); // свежая база из schema.sql: столбец и таблица уже есть — ничего не ломается
+  expect(e.recordStarPayment(db, 3, sub("n2"))).toBe(true);
+});
+
+test("recordStarPayment: подписка, 0,013 $ за звезду, срок из subscription_expiration_date, без дублей", () => {
+  const exp = unix("+30 days");
+  expect(e.recordStarPayment(db, 11, { ...sub("ch1"), subscription_expiration_date: exp })).toBe(true);
+  expect(e.recordStarPayment(db, 11, sub("ch1"))).toBe(false); // тот же update пришёл ещё раз
+  const rows = db.query("SELECT *, CAST(strftime('%s', expires_at) AS INTEGER) AS exp FROM payments WHERE telegram_id = 11").all() as any[];
+  expect(rows.length).toBe(1);
+  expect(rows[0]).toMatchObject({ kind: "subscription", amount: 250, currency: "XTR", provider: "stars", exp });
+  expect(rows[0].net_usd).toBeCloseTo(3.25, 6);
+});
+
+test("recordStarPayment: разовая покупка без срока, продление, удержание за темы", () => {
+  e.recordStarPayment(db, 12, { ...sub("ch2", 100), invoice_payload: "pack_100" });
+  e.recordStarPayment(db, 12, { ...sub("ch3", 250), invoice_payload: "x", is_recurring: true });
+  e.recordStarPayment(db, 12, sub("ch4"), { extraFeeShare: 0.15 });
+  const rows = db.query("SELECT charge_id, kind, net_usd, expires_at FROM payments ORDER BY charge_id").all() as any[];
+  expect(rows.map((r) => r.kind)).toEqual(["one_off", "subscription", "subscription"]);
+  expect(rows[0].expires_at).toBeNull();
+  expect(rows[1].expires_at).not.toBeNull(); // нет subscription_expiration_date — 30 дней от платежа
+  expect(rows[2].net_usd).toBeCloseTo(250 * 0.013 * 0.85, 6);
+});
+
+test("recordStarPayment не принимает другую валюту", () => {
+  expect(() => e.recordStarPayment(db, 13, { ...sub("ch5"), currency: "RUB" })).toThrow();
+});
+
+test("доступ по expires_at: с запасом в сутки, без возвращённых и разовых", () => {
+  e.recordStarPayment(db, 14, { ...sub("a"), subscription_expiration_date: unix("+10 days") });
+  expect(e.hasActiveSubscription(db, 14)).toBe(true);
+  expect(e.subscriptionUntil(db, 14)).not.toBeNull();
+  e.recordStarPayment(db, 15, { ...sub("b"), subscription_expiration_date: unix("-12 hours") });
+  expect(e.hasActiveSubscription(db, 15)).toBe(true); // продление может опоздать
+  e.recordStarPayment(db, 16, { ...sub("c"), subscription_expiration_date: unix("-2 days") });
+  expect(e.hasActiveSubscription(db, 16)).toBe(false);
+  e.recordStarPayment(db, 17, { ...sub("d", 100), invoice_payload: "pack_100" });
+  expect(e.hasActiveSubscription(db, 17)).toBe(false);
+  pay(18, `datetime('now', '-31 days')`, 3.25, "old");
+  expect(e.hasActiveSubscription(db, 18)).toBe(false);
+});
+
+test("возврат: отмечается один раз и выпадает из ARPPU и доступа", () => {
+  e.recordStarPayment(db, 19, sub("ch6"));
+  expect(e.markRefunded(db, "ch6")).toBe(true);
+  expect(e.markRefunded(db, "ch6")).toBe(false);
+  expect(e.hasActiveSubscription(db, 19)).toBe(false);
+  expect(q("arppu_30d")[0].payers).toBe(0);
+  expect(q("refund_share_30d")[0]).toMatchObject({ payments: 1, refunded: 1, refund_pct: 100 });
+});
+
+test("checkCheckout: чужая цена, метка, валюта и вторая подписка — отказ; продление в последние сутки — можно", () => {
+  const prices = new Set([150, 250]);
+  const q250 = { currency: "XTR", total_amount: 250, invoice_payload: "sub_250" };
+  expect(e.checkCheckout(db, 20, q250, prices)).toEqual({ ok: true });
+  expect(e.checkCheckout(db, 20, { ...q250, total_amount: 300, invoice_payload: "sub_300" }, prices).ok).toBe(false);
+  expect(e.checkCheckout(db, 20, { ...q250, invoice_payload: "sub_150" }, prices).ok).toBe(false);
+  expect(e.checkCheckout(db, 20, { ...q250, currency: "USD" }, prices).ok).toBe(false);
+  e.recordStarPayment(db, 20, { ...sub("s1"), subscription_expiration_date: unix("+20 days") });
+  const busy = e.checkCheckout(db, 20, q250, prices);
+  expect(busy.ok).toBe(false);
+  if (!busy.ok) expect(busy.error).toContain("уже активна");
+  e.recordStarPayment(db, 21, { ...sub("s2"), subscription_expiration_date: unix("+6 hours") });
+  expect(e.checkCheckout(db, 21, q250, prices).ok).toBe(true);
+});
+
+test("воронка по неделям и ценам: люди, а не показы; оплата по той же цене за 7 дней; без своих и возвратов", () => {
+  const view = (id: number, stars: number, action: string, when: string) =>
+    db.run(`INSERT INTO paywall_views (telegram_id, at, stars, action) VALUES (?, datetime('now', 'weekday 3', '-14 days', ?), ?, ?)`, [
+      id, when, stars, action,
+    ]);
+  for (const id of [31, 32, 33, 34, 111111111]) view(id, 250, "seen", "+0 hours");
+  view(31, 250, "seen", "+2 hours"); // второй показ тому же человеку
+  for (const id of [31, 32, 33]) view(id, 250, "clicked", "+1 hours");
+  view(35, 150, "seen", "+7 days"); // следующая неделя, другая цена
+  const pays = (id: number, stars: number, charge: string, when: string, refunded = false) =>
+    db.run(`INSERT INTO payments (telegram_id, kind, paid_at, amount, currency, provider, charge_id, net_usd, refunded_at)
+            VALUES (?, 'subscription', datetime('now', 'weekday 3', '-14 days', ?), ?, 'XTR', 'stars', ?, ?, ?)`,
+      [id, when, stars, charge, stars * 0.013, refunded ? "2026-01-01 00:00:00" : null]);
+  pays(31, 250, "w1", "+3 hours");
+  pays(31, 250, "w1b", "+4 hours"); // тот же человек
+  pays(32, 250, "w2", "+3 hours", true); // возврат
+  pays(33, 250, "w3", "+9 days"); // позже 7 дней
+  pays(35, 150, "w5", "+7 days", false);
+  pays(111111111, 250, "wme", "+3 hours");
+  const rows = q("paywall_funnel_by_week");
+  expect(rows.length).toBe(2);
+  expect(rows[0]).toMatchObject({ stars: 250, seen: 4, clicked: 3, paid: 1 });
+  expect(rows[1]).toMatchObject({ stars: 150, seen: 1, clicked: 0, paid: 1 });
+});
