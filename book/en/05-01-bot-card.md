@@ -39,11 +39,11 @@ Every surface of the card is set in @BotFather, and most can also be set with Bo
 | Commands | Menu and the hint after `/` | Up to 100 commands | `/setcommands`, `setMyCommands` |
 | Menu button | Next to the input field | — | `setChatMenuButton` |
 
-The limits come from Telegram's documentation[^src-tg-features][^src-tg-api-profile]. Unlike the name, the username can't be changed later. The picture sizes, 640×360 (320×180 for a GIF), come from a 2022 @BotFather hint[^src-botfather-pic]. Check the current hint in @BotFather before uploading.
+The limits come from Telegram's documentation[^src-tg-features][^src-tg-api-profile]. Unlike the name, the username can't be changed later. @BotFather itself suggests the picture sizes: a 640×360 photo, or a GIF at 320×180, 640×360 or 960×540[^src-botfather-pic]. The hint has changed over the years, so check it before uploading.
 
 ### Three paths to the button
 
-**A link from a post or a paid placement.** It opens an empty chat with a "Start" button. The chat shows the picture and the description under the heading "What can this bot do?", which is localized for other interface languages[^src-tg-features]. This is the main screen.
+**A link from a post or a paid placement.** It opens an empty chat with a "Start" button. The chat shows the picture and the description under the heading "What can this bot do?", which is localized for other interface languages: in Russian it reads «Что умеет этот бот?»[^src-tg-features][^src-tg-translations-51]. This is the main screen.
 
 **A forwarded link.** Telegram sends the short description along with the link[^src-tg-features]. The web page `t.me/<username>` shows the name, avatar, short description and monthly user count[^src-tme-page]. A small number works as negative social proof, and a `?start=` link won't hide it: it's the same page. All you can do is outweigh it with copy.
 
@@ -120,7 +120,7 @@ help - what I can do
 
 This is the format `/setcommands` accepts in @BotFather: command, hyphen, description. The set is an illustration, not our bot's current menu.
 
-Command scopes let you show different lists in private chats, in groups and to admins. They're available only through `setMyCommands`, not in @BotFather. If your bot works in groups, give groups their own short list.
+Command scopes let you show different lists in private chats, in groups and to admins. They're available only through `setMyCommands`: @BotFather's command list has a language switch, but no scopes. If your bot works in groups, give groups their own short list.
 
 The menu button can launch a mini app. If your bot is a mini app, enable the Main Mini App in @BotFather to get a launch button and a profile preview[^src-tg-mainapp]. Otherwise, leave the command list on the button: it tells a stranger more. We cover the Mini App Store storefront in [chapter 3.6](#ch-3-6).
 
@@ -130,7 +130,7 @@ The name, both descriptions and the commands are set separately per language wit
 
 The language comes from the app or system settings[^src-tg-privacy-lang-51]. A Russian speaker may well keep those set to English, and the same goes for any non-English audience. The moment you add an `en` version, they see English copy. So make your core audience's language the default, and add `en` only after checking the `language_code` split among your users ([chapter 2.2](#ch-2-2)).
 
-You don't need a script to set the copy. @BotFather plus a file with the card copy in your repository is enough. Date every change: without dates, you can't compare the weeks before and after an edit.
+You don't need a script to set the copy. The @BotFather mini app adds versions in other languages too, via "Add Localization" on the description and the commands[^src-botfather-pic]. @BotFather plus a file with the card copy in your repository is enough. Date every change: without dates, you can't compare the weeks before and after an edit.
 
 ### Check it with numbers
 
@@ -201,7 +201,8 @@ Tonight: rewrite your card.
 [^src-tg-api-changelog]: Telegram, "Bot API changelog": `setMyCommands` in 4.7 (March 30, 2020), command scopes in 5.3 (June 25, 2021), `setChatMenuButton` in 6.0 (April 16, 2022), `setMyDescription` and `setMyShortDescription` in 6.6 (March 9, 2023), `setMyName` in 6.7 (April 21, 2023), the main mini app in 7.8 (July 31, 2024), `setMyProfilePhoto` in 9.4 (February 9, 2026); version 10.3 on August 24, 2026. core.telegram.org/bots/api-changelog (accessed September 28, 2026).
 [^src-tg-features]: Telegram, "Telegram Bot Features," sections "Commands," "Global Commands," "About text, description and profile media," "Edit bots": `/setdescription` up to 512 characters, the "What can this bot do?" block; `/setabouttext` up to 120 characters, sent along with the link; both texts can be localized; username 5–32 characters, can't be changed. core.telegram.org/bots/features (accessed September 28, 2026).
 [^src-tg-api-profile]: Telegram Bot API: `setMyName` (0–64 characters), `setMyDescription` (0–512, shown while the chat is empty), `setMyShortDescription` (0–120), the `language_code` parameter; `setMyCommands` (up to 100 commands), `BotCommand` (1–32 and 1–256 characters), command scopes; `setChatMenuButton`; `setMyProfilePhoto`. core.telegram.org/bots/api (accessed September 28, 2026).
-[^src-botfather-pic]: "BotFather now lets you set a Description picture" (in Russian), vc.ru, September 8, 2022, quoting the @BotFather hint: "640x360 pixels. Or a GIF, 320x180 pixels." vc.ru/social/498034 (accessed September 28, 2026). A secondary source: the official documentation gives no sizes.
+[^src-botfather-pic]: The @BotFather mini app, "Edit Info" and "Commands" screens (checked September 28, 2026 on the authors' bot): the hint reads "Upload a photo for the bot's start page, 640x360 pixels. You can also use a GIF animation, 320x180, 640x360 or 960x540 pixels"; the description is called Welcome message there; the description and commands have a language switch with "Add Localization" and no command scopes. In 2022 the hint named only 640×360 and a 320×180 GIF (vc.ru/social/498034, in Russian).
+[^src-tg-translations-51]: Telegram Translations, Russian localization, key BotInfoTitle: "What can this bot do?" is «Что умеет этот бот?». translations.telegram.org/ru/android/bots_and_payments/ (accessed September 28, 2026).
 [^src-tme-page]: The web pages t.me/BotFather and t.me/BotFather?start=abc: name, avatar, short description and a "monthly users" line (accessed September 28, 2026).
 [^src-tg-faq]: Telegram FAQ, section "Usernames and t.me": a public username can be found through global search. telegram.org/faq (accessed September 28, 2026).
 [^src-tg-recommend]: Telegram API, "Similar channels and bots": the `bots.getBotRecommendations` method, the "Similar bots" tab in a bot's profile, matching by audience overlap. core.telegram.org/api/recommend (accessed September 28, 2026).

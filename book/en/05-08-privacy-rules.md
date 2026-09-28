@@ -24,7 +24,7 @@ A bot must have a privacy policy that users can access: what it stores, how it c
 
 It makes promises on your behalf: collecting only what's necessary, sharing nothing with third parties without explicit permission, and answering requests within 30 days. Russian law requires a faster response.
 
-If the bot does more, you need your own policy, set in @BotFather[^src-tg-devterms]. The usual reason is AI: every message goes to the model provider, which is a third party. Mini apps get a privacy policy button in their settings automatically.
+If the bot does more, you need your own policy[^src-tg-devterms]. Put its link into the @BotFather mini app under your bot → Bot Settings → Privacy Policy; while the field is empty, the standard policy applies[^src-botfather-app-58]. The usual reason is AI: every message goes to the model provider, which is a third party. Mini apps get a privacy policy button in their settings automatically.
 
 ### Who the bot can message, and how fast
 
@@ -42,7 +42,9 @@ An event invitation in our calendar bot is a link. Until the invitee taps "Start
 
 ### Groups and mini apps
 
-In groups, bots have privacy mode switched on by default[^src-tg-features-privacy]. The bot sees service messages, commands addressed to it, and general commands if it was the last bot to post in the chat. It also sees messages sent via the bot and replies to its own messages. It doesn't see ordinary mentions.
+In groups, bots have privacy mode switched on by default[^src-tg-features-privacy]. The bot sees service messages, commands addressed to it, and general commands if it was the last bot to post in the chat. It also sees messages sent via the bot and replies to its own messages.
+
+The documentation's list doesn't include @username mentions, yet the hint on @BotFather's Group Privacy switch does[^src-botfather-app-58]. If a feature relies on mentions, test it in a test group.
 
 Don't switch privacy mode off or make the bot an admin unless you need to: an admin sees every message. The group's members never started the bot themselves. That matters if you grow through the `startgroup` links from [chapter 5.2](#ch-5-2).
 
@@ -343,6 +345,7 @@ Bring your inventory to a lawyer. Ask whether 152-FZ applies to you and whether 
 [^src-156fz]: Art. 9 Part 1 of Federal Law No. 152-FZ, as amended by Federal Law No. 156-FZ of June 24, 2025, in force since September 1, 2025. consultant.ru/legalnews/28832/ (accessed September 28, 2026).
 [^src-152fz-local]: Art. 18 Part 5 of Federal Law No. 152-FZ, as amended by Federal Law No. 23-FZ of February 28, 2025 (in force since July 1, 2025). consultant.ru/document/cons_doc_LAW_499984/ (accessed September 28, 2026).
 [^src-koap-1311]: Russian Code of Administrative Offences (KoAP), Art. 13.11, as amended July 26, 2026: Parts 8–9 (Federal Law No. 405-FZ of December 2, 2019); Parts 10–12, 15 and Note 1 (Federal Law No. 420-FZ of November 30, 2024; published November 30, 2024, in force 180 days later, from May 30, 2025). consultant.ru/document/cons_doc_LAW_34661/, publication.pravo.gov.ru/document/0001202411300011 (accessed September 28, 2026).
+[^src-botfather-app-58]: The @BotFather mini app, Bot Settings (checked September 28, 2026 on the authors' bot): the Privacy Policy field says "If you don't specify a Privacy Policy, the Standard Privacy Policy for Bots and Mini Apps will apply"; the Group Privacy switch reads "Receive only messages that mention or reply to your bot, or contain /commands."
 [^src-gdpr]: Regulation (EU) 2016/679 (GDPR): Art. 3(2), 5(1)(c) and (e), 12(3), 17, 27, 83(5). gdpr-info.eu (accessed September 28, 2026).
 [^src-ico-scope]: Information Commissioner's Office (ICO), "Who does the UK GDPR apply to?": the UK GDPR "also applies to organisations outside the UK that offer goods or services to individuals in the UK." ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/personal-information-what-is-it/who-does-the-uk-gdpr-apply-to/ (accessed September 28, 2026).
 [^src-ccpa]: State of California, Department of Justice, Office of the Attorney General, "California Consumer Privacy Act (CCPA)": applicability thresholds for for-profit businesses; the CPRA (Proposition 24, November 2020) amends the CCPA. oag.ca.gov/privacy/ccpa (accessed September 28, 2026).
